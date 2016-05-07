@@ -1,5 +1,6 @@
 # pyalarm
-Pyalarm can work periodic duty  with alarm to tell you when to work（25min) or rest(5min)。
+Pyalarm can work periodic duty  with alarm to tell you when to work（25min) or rest(5min)。 
+
 pyalarm可以设定工作和休息时间并轮流提醒，类似于番茄时间；默认是工作25min，休息5min。
 # rely-on/依赖
 `sudo pip install multiprocessing`
