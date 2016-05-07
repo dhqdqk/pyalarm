@@ -6,6 +6,7 @@ pyalarm可以设定工作和休息时间并轮流提醒，类似于番茄时间�
 `sudo pip install multiprocessing`
 
 pyalarm use Process of module "multiprocessing" to run a son-process for alarm window coded with Tkinter。
+
 提醒弹窗口（Tkinter编写）用多进程方式打开。
 # 设置
 ```
