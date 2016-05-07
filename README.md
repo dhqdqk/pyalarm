@@ -2,7 +2,8 @@
 Pyalarm can work periodic duty  with alarm to tell you when to work（25min) or rest(5min)。
 pyalarm可以设定工作和休息时间并轮流提醒，类似于番茄时间；默认是工作25min，休息5min。
 # rely-on/依赖
-"sudo pip install multiprocessing
+`sudo pip install multiprocessing`
+
 pyalarm use Process of module "multiprocessing" to run a son-process for alarm window coded with Tkinter。
 提醒弹窗口（Tkinter编写）用多进程方式打开。
 # 设置
