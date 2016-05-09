@@ -9,7 +9,6 @@ __author__ = 'dhqdqk'
 '''
 
 import Tkinter
-import tkMessageBox
 import time
 from multiprocessing import Process
 
@@ -17,12 +16,26 @@ time_work = 25 * 60 # 25min；工作周期时间; work time period
 time_rest = 5 * 60 # 5min；休息周期时间; rest time period
 #time_pause_day = [['12:00:00', '13:00:00'], ['19:00:00', '08:30:00']]
 #time_pause_night = [['06:00:00', '19:00:00'], ]
-time_effect = ['19:00:00', '07:00:00'] # 程序闹钟每天生效时间段; effective time of alarm every day;
+time_effect = ['19:00:00', '07:00:00'] # 闹钟每天生效时间段; effective time of alarm every day;
 
 class Alarm(object):
-    def __init__(self, time_work, time_active, time_rest):
-        self.time_work = time_work
-        self.time_active = time_active
+    def __init__(self, time_effect, time_work, time_rest):
+        '''
+        alarm_state: 闹钟是否工作的标记
+        tip: 已生效闹钟是否已执行的标记；默认为True，打开程序时提醒一次。
+        next_alarm_time: 下次有效闹钟的时间(UTC)
+        state:标记当前是工作（Work）还是休息（Rest）状态
+        now_year_month_day: 当前年月日时
+        now_time：当前时分秒之时
+        next_alarm_text：下次闹钟的时分秒之时
+        time_effect_len：程序闹钟有效工作的时间长度
+        next_effect_time:下次程序闹钟生效的时间起点
+        next_ineffect_time: 下次程序闹钟失效的时间起点
+        effect：标记程序闹钟是否生效
+        pause：标记闹钟停止时已提醒（只提醒一次）
+        '''
+        self.time_work = time_effect
+        self.time_active = time_work
         self.time_rest = time_rest
         self.alarm_state = True
         self.tip = True
@@ -59,8 +72,10 @@ class Alarm(object):
                 init_time = (now_utctime - time_effect_start) % 1800
                 
                 if init_time < self.time_active:
-                    # 若程序起动时，时间在工作时间段，将状态置为工作，计算下一次休息时间；否则对应是休息状态和下次工作时间
-                    self.alarm_state = True # True-'work time'; False-' Rest time'
+                    # 若程序起动时，时间在工作时间段，将状态置为工作，计算下一次休息时间；
+                    # 否则对应是休息状态和下次工作时间
+                    # True-'work time'; False-' Rest time'
+                    self.alarm_state = True
                     self.next_alarm_time = 1800 - init_time + time.time() - self.time_rest
                 else: 
                     self.alarm_state = False
@@ -93,8 +108,7 @@ class Alarm(object):
                     self.next_ineffect_time = self.next_effect_time + self.time_effect_len
                 
                 if init_time < self.time_active:
-                    # 若程序起动时，时间在工作时间段，将状态置为工作，计算下一次休息时间；否则对应是休息状态和下次工作时间
-                    self.alarm_state = True # True-'work time'; False-' Rest time'
+                    self.alarm_state = True
                     self.next_alarm_time = 1800 - init_time + time.time() - self.time_rest
                 else: 
                     self.alarm_state = False
@@ -122,11 +136,18 @@ class Alarm(object):
         self.state = 'Work' if self.alarm_state else 'Rest'
         # 下次提醒时间
         self.next_alarm_text = time.strftime("%H:%M:%S", time.localtime(self.next_alarm_time))
-        
-        
-        
-def alarm_show():
-    tkMessageBox.showinfo(title='alarm', message=message)
+    
+    def alarmMessage(self):
+        if self.effect:
+            message = self.now_year_month_day + "\n" + self.now_time + \
+                            "\nWork State: " + self.state + "\nNext Alarm: " + \
+                            self.next_alarm_text
+        else:
+            message = "now alarm is inffective.\n" + \
+                    "next effective time is:\n" + \
+                    time.strftime("%H:%M:%S", time.localtime(self.next_effect_time))
+        return message
+
 
 def alarmGUI(message):
     mainwin = Tkinter.Tk()
@@ -144,7 +165,7 @@ def alarmGUI(message):
     #b.pack(expand=Tkinter.YES, fill=Tkinter.BOTH)
     
     #hi = Tkinter.Button(mainwin, text="hi", command=sayhi)
-    #hi.pack(side=Tkinter.LEFT)    
+    #hi.pack(side=Tkinter.LEFT)
     
     mainwin.mainloop()
 
@@ -156,20 +177,14 @@ if __name__ == "__main__":
             # print "work"
             myalarm.alarm()
             if myalarm.tip:
-                message = myalarm.now_year_month_day + "\n" + myalarm.now_time + \
-                            "\nWork State: " + myalarm.state + "\nNext Alarm: " + \
-                            myalarm.next_alarm_text
-                p_alarm = Process(target=alarmGUI, args=(message,))
+                p_alarm = Process(target=alarmGUI, args=(myalarm.alarmMessage(),))
                 p_alarm.start()
                 myalarm.tip = False
             time.sleep(1)
         else:
             # print "pause"
             if not myalarm.pause:
-                p_message = "now alarm is inffective.\n" + \
-                            "next effective time is:\n" + \
-                            time.strftime("%H:%M:%S", time.localtime(myalarm.next_effect_time))
-                pp_alarm = Process(target=alarmGUI, args=(p_message,))
+                pp_alarm = Process(target=alarmGUI, args=(myalarm.alarmMessage(),))
                 pp_alarm.start()
                 myalarm.pause = 1
             time.sleep(10)
