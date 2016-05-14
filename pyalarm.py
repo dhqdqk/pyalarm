@@ -15,7 +15,7 @@ from multiprocessing import Process
 time_work = 25 * 60 # 25min；工作周期时间; work time period
 time_rest = 5 * 60 # 5min；休息周期时间; rest time period
 # 闹钟每天生效时间段; effective time of alarm every day;the first one should be start-time
-time_effect = ['19:00:00', '22:00:00', '23:00:00', '09:00:00']
+time_effect = ['19:00:00', '22:00:00', '03:00:00', '09:00:00']
 
 class Alarm(object):
     def __init__(self, time_effect, time_work, time_rest):
@@ -32,7 +32,7 @@ class Alarm(object):
         state_start:本次状态的时间起点
         state_end: 本次状态的时间终点
         effect：标记程序闹钟是否生效
-        pause：标记闹钟停止时已提醒（只提醒一次）
+        pause_alarm：标记闹钟停止时是否已提醒（只提醒一次）
         '''
         self.time_effect = time_effect
         self.time_effect_utc = []
@@ -50,14 +50,17 @@ class Alarm(object):
         self.next_alarm_text = ''
         self.state_time_len = 0
         self.effect = True
-        self.pause = 0
+        self.pause_alarm = False
         self.zero_time_utc = 0
         self.h24_time_utc = 0
     
     def time_setting(self):
+        '''
+        检测时间设定，并计算当天的0时与24时的UTC时间戳
+        '''
         now_year = time.strftime('%Y')
         now_month_day_en = time.strftime('%a %b %d')
-        zero = "00:00:00"
+        hzero = "00:00:00"
         h24 = "23:59:59"
         
         if len(self.time_effect) % 2 == 0:
@@ -67,13 +70,18 @@ class Alarm(object):
         else:
             raise Exception("time_effect only accepts start-end time pairs")
         self.zero_time_utc = time.mktime(time.strptime(now_month_day_en+' '+
-                    zero+' '+now_year, "%a %b %d %H:%M:%S %Y"))
+                    hzero+' '+now_year, "%a %b %d %H:%M:%S %Y"))
         self.h24_time_utc = time.mktime(time.strptime(now_month_day_en+' '+
                     h24+' '+now_year, "%a %b %d %H:%M:%S %Y")) + 1.0
         
     def init_alarm(self):
+        '''
+        初始化闹钟状态
+        '''
         self.time_setting()
         now_utctime = time.time()
+        
+        # 检测当前时间所出的状态
         mintime = []
         for i, j in enumerate(self.time_effect_utc):
             if now_utctime < j:    
@@ -83,8 +91,11 @@ class Alarm(object):
         self.state_start = self.time_effect_utc[now_point-1]
         self.state_end = self.time_effect_utc[now_point]
         
-        if i % 2 == 0:
+        if now_point % 2 == 0:
+            # 当前时间处于失效状态,发出失效通知
             self.effect = False
+            self.pause_alarm = True
+            self.next_alarm_time = self.state_end
             if self.state_start < self.state_end:
                 self.state_time_len = self.state_end - self.state_start
             else:
@@ -118,8 +129,8 @@ class Alarm(object):
     
     def alarm(self):
         now_utctime = time.time()
-        # 判断是否状态将改变，是则切换状态并计算下次切换时间
         if now_utctime < self.state_end:
+            # 切换闹钟的工作和休息状态并计算下次切换时间
             if now_utctime - self.next_alarm_time == 0:
                 self.tip = False
                 if self.alarm_state:
@@ -129,6 +140,7 @@ class Alarm(object):
                     self.alarm_state = True
                     self.next_alarm_time += self.time_rest
         else:
+            # 闹钟状态将改变， 重置闹钟
             self.init_alarm()
     
     def alarmMessage(self):
@@ -182,8 +194,8 @@ if __name__ == "__main__":
             time.sleep(1)
         else:
             # print "pause"
-            if not myalarm.pause:
+            if myalarm.pause_alarm:
                 pp_alarm = Process(target=alarmGUI, args=(myalarm.alarmMessage(),))
                 pp_alarm.start()
-                myalarm.pause = 1
+                myalarm.pause_alarm = False
             time.sleep(10)
