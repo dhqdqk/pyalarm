@@ -15,7 +15,7 @@ from multiprocessing import Process
 time_work = 25 * 60 # 25min；工作周期时间; work time period
 time_rest = 5 * 60 # 5min；休息周期时间; rest time period
 # 闹钟每天生效时间段; effective time of alarm every day;the first one should be start-time
-time_effect = ['19:00:00', '22:00:00', '03:00:00', '09:00:00']
+time_effect = ['19:00:00', '22:00:00', '01:00:00', '08:51:00']
 
 class Alarm(object):
     def __init__(self, time_effect, time_work, time_rest):
@@ -83,14 +83,15 @@ class Alarm(object):
         
         # 检测当前时间所出的状态
         mintime = []
-        for i, j in enumerate(self.time_effect_utc):
-            if now_utctime < j:    
-                mintime.append(j)
+        for i in self.time_effect_utc:
+            if now_utctime < i:    
+                mintime.append(i)
         mintime.sort()
         now_point = self.time_effect_utc.index(mintime[0])
         self.state_start = self.time_effect_utc[now_point-1]
         self.state_end = self.time_effect_utc[now_point]
         
+        print "now_point:", now_point, "\n"
         if now_point % 2 == 0:
             # 当前时间处于失效状态,发出失效通知
             self.effect = False
@@ -103,8 +104,12 @@ class Alarm(object):
         else:
             self.effect = True
             if self.state_start < self.state_end:
+                print "start< end\n"
                 self.state_time_len = self.state_end - self.state_start
-                space_time = (now_utctime - self.state_time_len) % self.period
+                space_time = (now_utctime - self.state_start) % self.period
+                print "period: %d" % self.period
+                print "space_time: %d" % space_time
+                print "time_work: %d" % self.time_work
                 if space_time < self.time_work:
                     # 若程序起动时，时间在工作时间段，将状态置为工作，计算下一次休息时间；
                     # 否则对应是休息状态和下次工作时间
@@ -115,6 +120,7 @@ class Alarm(object):
                     self.alarm_state = False
                     self.next_alarm_time = self.period - space_time + time.time()
             else:
+                print "start> end\n"
                 self.state_time_len = 24 * 60 * 60 - (self.state_start - self.state_end)
                 if now_utctime < self.state_end:
                     space_time = (self.state_time_len - (self.state_end - now_utctime)) % self.period
@@ -126,6 +132,7 @@ class Alarm(object):
                 else: 
                     self.alarm_state = False
                     self.next_alarm_time = self.period - space_time + time.time()
+        print self.alarm_state
     
     def alarm(self):
         now_utctime = time.time()
@@ -157,45 +164,43 @@ class Alarm(object):
                             "\nWork State: " + self.state + "\nNext Alarm: " + \
                             self.next_alarm_text
         else:
-            message = "now alarm is inffective.\n" + \
+            message = self.now_year_month_day + "\n" + self.now_time + "\n" + \
+                    "now alarm is inffective.\n" + \
                     "next effective time is:\n" + \
                     time.strftime("%H:%M:%S", time.localtime(self.state_end))
         return message
 
 
-def alarmGUI(message):
-    mainwin = Tkinter.Tk()
-    mainwin.title = 'PyAlarm'
-    mainwin.geometry('400x200')
-    mainwin.resizable(width=True, height=True)
-    
-    #view_alarm = Tkinter.Button(mainwin, text='view alarm', command=show)
-    
-    w = Tkinter.Label(mainwin, text=message, font=("Arial", 20))
-    w.pack(side=Tkinter.TOP)
-    
-    #b = Tkinter.Button(mainwin, text='alarm', command=alarm_show)
-    #b.pack(side=Tkinter.LEFT)
-    #b.pack(expand=Tkinter.YES, fill=Tkinter.BOTH)
-    
-    mainwin.mainloop()
+    def alarmGUI(self, message):
+        self.mainwin = Tkinter.Tk()
+        self.mainwin.title = 'PyAlarm'
+        self.mainwin.geometry('400x200')
+        self.mainwin.resizable(width=True, height=True)
+        
+        #view_alarm = Tkinter.Button(mainwin, text='view alarm', command=show)
+        
+        self.w = Tkinter.Label(self.mainwin, text=message, font=("Arial", 20))
+        self.w.pack(side=Tkinter.TOP)
+
+        self.mainwin.mainloop()
 
 if __name__ == "__main__":
     myalarm = Alarm(time_effect, time_work, time_rest)
     myalarm.init_alarm()
     while True:
+        # 反复检查当前时间的状态
+        myalarm.alarm()
         if myalarm.effect:
             # print "work"
-            myalarm.alarm()
             if myalarm.tip:
-                p_alarm = Process(target=alarmGUI, args=(myalarm.alarmMessage(),))
+                p_alarm = Process(target=myalarm.alarmGUI, args=(myalarm.alarmMessage(),))
                 p_alarm.start()
                 myalarm.tip = False
             time.sleep(1)
         else:
             # print "pause"
             if myalarm.pause_alarm:
-                pp_alarm = Process(target=alarmGUI, args=(myalarm.alarmMessage(),))
+                pp_alarm = Process(target=myalarm.alarmGUI, args=(myalarm.alarmMessage(),))
                 pp_alarm.start()
                 myalarm.pause_alarm = False
             time.sleep(10)
